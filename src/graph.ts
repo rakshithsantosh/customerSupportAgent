@@ -1,6 +1,11 @@
 import { StateGraph } from "@langchain/langgraph";
 import { StateAnnotation } from "./state";
 import { model } from "./model";
+import { ToolNode } from "@langchain/langgraph/prebuilt";
+import { getOffers } from "./tools";
+
+const marketingtools = [getOffers];
+const marketingtoolNode = new ToolNode(marketingtools);
 
 async function frontDeskSupport(state: typeof StateAnnotation.State) {
   //logic for frontdesk support
@@ -33,14 +38,20 @@ async function frontDeskSupport(state: typeof StateAnnotation.State) {
     messages: [supportResponse],
     nextRepresentative: categorizationOutput,
   };
-
-  return state;
 }
 
-function marketingSupport(state: typeof StateAnnotation.State) {
+async function marketingSupport(state: typeof StateAnnotation.State) {
   //logic for marketing support
-  console.log("In marketing support");
-  return state;
+  const llmwithTools = model.bindTools(marketingtools);
+
+  const SYSTEM_PROMPT = `You are a marketing support representative for a company that helps software developers excel in their careers through practical web development and GenAi projects. Your job is to assist users with any marketing-related queries, including providing information about discounts, promo codes, offers, and special campaigns. Use the available tools to fetch the latest offers and discounts when necessary. Be polite and professional in your responses.`;
+
+  const marketingResponse = llmwithTools.invoke([
+    { role: "system", content: SYSTEM_PROMPT },
+    ...state.messages,
+  ]);
+
+  return { messages: [marketingResponse] };
 }
 
 function LearningSupport(state: typeof StateAnnotation.State) {
